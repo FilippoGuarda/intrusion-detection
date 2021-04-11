@@ -1,6 +1,6 @@
 import numpy as np
 import cv2
-#from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt
 import time 
 
 def L1(img1, img2):
@@ -56,17 +56,11 @@ def pfm(hist):
 
 # Defining a variable interpolation for mean or median functions
 interpolation = np.median # or np.mean
-alfa=0.2
+alfa=0.5
 def background_initialization(bg,n,cap,count):
     while cap.isOpened() and count < n:
         ret, frame = cap.read()
         if ret or not frame is None:
-            # Release the Video if ret is false
-            #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            #hist,bins = np.histogram(frame.flatten(),256,[0,256])
-            #eq_op = pfm(hist)*255
-            #frame = eq_op[frame] 
-            frame
             if count==0:
                 bg.append(frame)
             else :
@@ -90,7 +84,7 @@ def background_update(bg, prev_bg):
 thr = 65
 distance = L2
 bg=[]
-N_frames=30 #then refresh
+N_frames=50 #then refresh
 #def check_light():
     
 def sobel(img):
@@ -120,7 +114,7 @@ personDetectorParameters.filterByInertia = False
 
 # define params for book detection
 bookDetectorParameters.filterByArea = True
-bookDetectorParameters.minArea = 1000 #1000
+bookDetectorParameters.minArea = 500 #1000
 bookDetectorParameters.maxArea = 5000 #5000
 bookDetectorParameters.minDistBetweenBlobs = 0
 bookDetectorParameters.filterByCircularity = False
@@ -151,65 +145,35 @@ def change_detection(video_path, bg, threshold,idx):
             print("Released Video Resource")
             # Break exit the for loops
             break
-        # Display the frame
-        #if idx < 1:
-        #    previous_frames.append(frame.astype(float))
-        #    mask = distance(frame, bg) > threshold
-        #else:
-        #    masks = []
-        #    mask = distance(frame, bg) > threshold
-        #    masks.append(mask)
 
-         #   if len(previous_frames)>0:
-          #      mask1 = distance(previous_frames[0],bg) > threshold
-           #     masks.append(mask1)
-            #    mask=np.prod(masks, axis=0)
-
-            #previous_frames.pop(0)
-            #previous_frames.append(frame.astype(float))
-
-        #idx += 1
-        #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        #mask=1-bg[frame]>threshold
         mask = distance(frame, bg) > threshold
         mask = mask.astype(np.uint8)*255
-        #cv2.imshow('mask', mask.astype(np.uint8)*255)
-        blur=cv2.GaussianBlur(mask.astype(np.uint8)*255,(5,5),0)
+        # mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
+        cv2.imshow('mask', mask)
+        # blur=cv2.GaussianBlur(mask,(9,9),0)
         # cv2.imshow('Blur', blur)
-        #ret, thresh = cv2.threshold(blur, 100, 255, 0) no difference in the video with otsu but i like japanese
-        ret, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-        cv2.imshow('thresh', thresh)
-        # we fill and erode non essential changes in the image first
-        #opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5)))
-        #cv2.imshow('opening', opening)
-        #closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5)))
-        #cv2.imshow('closing', closing)
-        eroded = cv2.erode(thresh, None, iterations=10)
-        cv2.imshow('eroded', eroded)
-        dilated = cv2.dilate(eroded, None, iterations=10)
+        # ret,thresh = cv2.threshold(blur,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        # cv2.imshow('thresh', thresh)
+        
+        # eroded = cv2.erode(mask, None, iterations=1)
+        # cv2.imshow('eroded', eroded)
+        
+       
+        # try with opening and closing of the binary image
+        opening = cv2.morphologyEx(mask, cv2.MORPH_OPEN,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3)), iterations = 1)
+        cv2.imshow('opening', opening)
+        dilated = cv2.dilate(opening, None, iterations=2)
         cv2.imshow('dilated', dilated)
-        # eroded2 = cv2.erode(dilated, None, iterations=14)
-        # cv2.imshow('eroded2', eroded2)
-        # then holes are filled with dilation
-        # dilated2 = cv2.dilate(eroded, None, iterations=1)
-        # cv2.imshow('dilated', dilated2)
-        selective=dilated+mask
-        cv2.imshow('selective', selective)
-        #if (selective==np.zeros(mask.shape)):
-        #    bg=background_update(frame, bg)
-        keypoints = detector_person.detect(dilated)
-       # keypoints = detector_person.detect(closing)
-        #if (idx==200):
-        #    i=1
-        #    j=1
-        #    bg=background_update(frame,bg,i,j)
-        #    idx=0
+        closing = cv2.morphologyEx(dilated, cv2.MORPH_CLOSE,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)), iterations = 4)
+        cv2.imshow('closing', closing)
+        
+        # draw keypoints over grayscale image
+        keypoints = detector_person.detect(closing)
         im_keypoints = cv2.drawKeypoints(frame, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-        keypoints2 = detector_book.detect(dilated)
-        #keypoints2 = detector_person.detect(closing)
+        keypoints2 = detector_book.detect(closing)
         im_keypoints2 = cv2.drawKeypoints(im_keypoints, keypoints2, np.array([]), (255,0,0), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
         cv2.imshow('Video',im_keypoints2)
-        #time.sleep(0.02)
+        time.sleep(0.02)
         idx +=1
         if cv2.waitKey(1) == ord('q'):
                 break
@@ -218,4 +182,3 @@ def change_detection(video_path, bg, threshold,idx):
     cv2.destroyAllWindows()
     
 change_detection('1.avi', bg, thr, idx)
-# something something this way comes
