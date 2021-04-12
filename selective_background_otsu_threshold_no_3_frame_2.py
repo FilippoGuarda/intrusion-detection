@@ -67,12 +67,12 @@ def background_initialization(bg,n,cap,count):
             #hist,bins = np.histogram(frame.flatten(),256,[0,256])
             #eq_op = pfm(hist)*255
             #frame = eq_op[frame] 
-            frame
+            frame = frame.astype(float)
             if count==0:
                 bg.append(frame)
             else :
                 bg.append(alfa*frame)
-                bg[count]=(1-alfa)*bg[count-1] + bg[count]
+                bg[count]=cv2.add((1-alfa)*bg[count-1] ,bg[count])
             count +=1             
             #print(count)
         else:
@@ -84,8 +84,8 @@ def background_initialization(bg,n,cap,count):
     return [bg_inter, count]
    
 def background_update(bg, prev_bg):
-    bg=(1-alfa)*prev_bg + alfa*bg
-    return bg
+    bg2=cv2.add((1-alfa)*prev_bg ,bg)
+    return bg2
 
 ###Define change detection parameters
 thr = 65
@@ -152,6 +152,7 @@ def change_detection(video_path, bg, threshold,idx):
             print("Released Video Resource")
             # Break exit the for loops
             break
+        frame = frame.astype(float)
         # Display the frame
         #if idx < 1:
         #    previous_frames.append(frame.astype(float))
@@ -185,9 +186,9 @@ def change_detection(video_path, bg, threshold,idx):
         #cv2.imshow('opening', opening)
         #closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5)))
         #cv2.imshow('closing', closing)
-        eroded = cv2.erode(thresh, None, iterations=1)
+        eroded = cv2.erode(thresh,  cv2.getStructuringElement(cv2.MORPH_RECT,(5,5)), iterations=1)
         cv2.imshow('eroded', eroded)
-        dilated = cv2.dilate(eroded, None, iterations=4)
+        dilated = cv2.dilate(eroded,  cv2.getStructuringElement(cv2.MORPH_RECT,(5,5)), iterations=8)
         cv2.imshow('dilated', dilated)
         # eroded2 = cv2.erode(dilated, None, iterations=14)
         # cv2.imshow('eroded2', eroded2)
@@ -195,21 +196,19 @@ def change_detection(video_path, bg, threshold,idx):
         # dilated2 = cv2.dilate(eroded, None, iterations=1)
         # cv2.imshow('dilated', dilated2)
         frame_copy=frame.copy()
+        frame_copy=frame_copy.astype(float)
         frame_copy[np.logical_not(mask)] = np.asarray([255,255,255])
         frame_copy = cv2.cvtColor(frame_copy, cv2.COLOR_BGR2GRAY)
         #selective=cv2.addWeighted(frame_copy, 0.7, dilated, 0.3, 0.2)
-        selective=cv2.add(frame_copy, dilated)   
+        selective=cv2.add(frame_copy, mask)   
         #selective = selective.astype(np.uint8)*255
         cv2.imshow('selective', selective)
-        #if (selective==np.zeros(mask.shape)):
-        #    bg=background_update(frame, bg)
         keypoints = detector_person.detect(dilated)
        # keypoints = detector_person.detect(closing)
-        #if (idx==200):
-        #    i=1
-        #    j=1
-        #    bg=background_update(frame,bg,i,j)
-        #    idx=0
+        print(selective)
+        print(np.all(selective))
+        if (np.all(selective)==True):
+            bg=background_update(frame.copy(),bg)
         im_keypoints = cv2.drawKeypoints(frame, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
         keypoints2 = detector_book.detect(dilated)
         #keypoints2 = detector_person.detect(closing)
