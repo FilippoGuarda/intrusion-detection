@@ -1,6 +1,5 @@
 import numpy as np
 import cv2
-from matplotlib import pyplot as plt
 import time 
 
 def L1(img1, img2):
@@ -23,36 +22,6 @@ def Linf(F1,F2):
         diff = np.max(diff, axis=-1)
     return diff
    
-def twoframedifference(frame, previousframe, distance_type, threshold):
-        distance=distance_type(frame,previousframe)
-        frame[distance<threshold]=np.array([255,255,255])
-        maskbool = distance>threshold
-        #print(distance>threshold)
-        mask=maskbool.astype(np.uint8)*255
-        return [mask]
-        #cv2.imshow('frame', frame)
-        #cv2.imshow('mask', mask)
-
-def threeframedifference(frame,prev1,prev2, distance_type, threshold):
-    if distance_type=="L1":
-        [maskbool,mask1]=twoframedifference(frame,prev1, distance_type, threshold)
-        if len(prev2)!=0:
-            [maskbool1,mask2]=twoframedifference(prev1,prev2, distance_type, threshold)
-    #print(maskbool, maskbool1)
-    mask=np.logical_and(maskbool, maskbool1)
-    prev1[np.logical_not(mask)]=np.array([255,255,255])
-    #print(mask)
-    mask=mask.astype(np.uint8)*255
-    #cv2.imshow('frame', prev1)
-    #cv2.imshow('mask', mask)
-def pfm(hist):
-    total_pixel = np.sum(hist)
-    pfm = []
-    for i in range(256):
-        pfm_i = np.sum(hist[:i]) / total_pixel
-        pfm.append(pfm_i)
-    return np.asarray(pfm)
-
 
 # Defining a variable interpolation for mean or median functions
 interpolation = np.median # or np.mean
