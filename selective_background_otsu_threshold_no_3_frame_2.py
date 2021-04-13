@@ -54,25 +54,32 @@ def pfm(hist):
         pfm.append(pfm_i)
     return np.asarray(pfm)
 
+def linear_stretching(img, max_value, min_value):
+    img[img<min_value] = min_value
+    img[img>max_value] = max_value
+    linear_stretched_img = 255./(max_value-min_value)*(img-min_value)
+    return linear_stretched_img
 
 # Defining a variable interpolation for mean or median functions
 interpolation = np.median # or np.mean
 alfa=0.2
-def background_initialization(bg,n,cap,count):
+def background_initialization(bg,n,cap,count, alfa):
     while cap.isOpened() and count < n:
         ret, frame = cap.read()
         if ret or not frame is None:
             # Release the Video if ret is false
-            #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             #hist,bins = np.histogram(frame.flatten(),256,[0,256])
             #eq_op = pfm(hist)*255
             #frame = eq_op[frame] 
-            frame = frame.astype(float)
+            frame
             if count==0:
                 bg.append(frame)
             else :
-                bg.append(alfa*frame)
-                bg[count]=cv2.add((1-alfa)*bg[count-1] ,bg[count])
+                bg.append(frame)
+                bg[count]=cv2.addWeighted(bg[count-1], 1-alfa, bg[count], alfa, alfa)
+                #bg.append(alfa*frame)
+                #bg[count]=(1-alfa)*bg[count-1] + bg[count]
             count +=1             
             #print(count)
         else:
@@ -84,8 +91,9 @@ def background_initialization(bg,n,cap,count):
     return [bg_inter, count]
    
 def background_update(bg, prev_bg):
-    bg2=cv2.add((1-alfa)*prev_bg ,bg)
-    return bg2
+    bg=(1-alfa)*prev_bg + alfa*bg
+    bg=cv2.addWeighted(prev_bg, 0.7, bg, 0.3, 0.2)
+    return bg
 
 ###Define change detection parameters
 thr = 65
@@ -134,13 +142,12 @@ detector_person = cv2.SimpleBlobDetector_create(personDetectorParameters)
 detector_book = cv2.SimpleBlobDetector_create(bookDetectorParameters)
 cap = cv2.VideoCapture('1.avi')
 count = 0
-idx = 0
 #computation of the background
-[bg, count]=background_initialization(bg,N_frames,cap, count)
+[bg, count]=background_initialization(bg,N_frames,cap, count,alfa)
 
 # bg=cv2.cvtColor(bg.astype(np.uint8), cv2.COLOR_BGR2GRAY)
 
-def change_detection(video_path, bg, threshold,idx):
+def change_detection(video_path, bg, threshold):
    # previous_frames = []
     cap = cv2.VideoCapture(video_path)
     while(cap.isOpened()):
@@ -152,7 +159,6 @@ def change_detection(video_path, bg, threshold,idx):
             print("Released Video Resource")
             # Break exit the for loops
             break
-        frame = frame.astype(float)
         # Display the frame
         #if idx < 1:
         #    previous_frames.append(frame.astype(float))
@@ -171,14 +177,14 @@ def change_detection(video_path, bg, threshold,idx):
             #previous_frames.append(frame.astype(float))
 
         #idx += 1
-        #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         #mask=1-bg[frame]>threshold
         mask = distance(frame, bg) > threshold
         mask = mask.astype(np.uint8)*255
         #cv2.imshow('mask', mask.astype(np.uint8)*255)
-        blur=cv2.GaussianBlur(mask.astype(np.uint8)*255,(5,5),0)
+        blur=cv2.GaussianBlur(mask.astype(np.uint8)*255,(7,7),0)
         # cv2.imshow('Blur', blur)
-        #ret, thresh = cv2.threshold(blur, 100, 255, 0) no difference in the video with otsu but i like japanese
+        #ret, thresh = cv2.threshold(blur, 90, 255, 0) #no difference in the video with otsu but i like japanese
         ret, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
         cv2.imshow('thresh', thresh)
         # we fill and erode non essential changes in the image first
@@ -186,40 +192,42 @@ def change_detection(video_path, bg, threshold,idx):
         #cv2.imshow('opening', opening)
         #closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5)))
         #cv2.imshow('closing', closing)
-        eroded = cv2.erode(thresh,  cv2.getStructuringElement(cv2.MORPH_RECT,(5,5)), iterations=1)
-        cv2.imshow('eroded', eroded)
-        dilated = cv2.dilate(eroded,  cv2.getStructuringElement(cv2.MORPH_RECT,(5,5)), iterations=8)
-        cv2.imshow('dilated', dilated)
-        # eroded2 = cv2.erode(dilated, None, iterations=14)
-        # cv2.imshow('eroded2', eroded2)
-        # then holes are filled with dilation
-        # dilated2 = cv2.dilate(eroded, None, iterations=1)
-        # cv2.imshow('dilated', dilated2)
+        #dilated = cv2.dilate(thresh, None, iterations=4)
+        #cv2.imshow('dilated', dilated)
+        #eroded = cv2.erode(dilated, None, iterations=1)
+        #cv2.imshow('eroded', eroded)
+        opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3, 3)), iterations = 1)
+        cv2.imshow('opening', opening)
+        closing = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)), iterations = 4)
+        cv2.imshow('closing', closing)
+        #gradient = cv2.morphologyEx(eroded, cv2.MORPH_GRADIENT, cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3, 3)))
+        #closing=gradient
         frame_copy=frame.copy()
-        frame_copy=frame_copy.astype(float)
-        frame_copy[np.logical_not(mask)] = np.asarray([255,255,255])
-        frame_copy = cv2.cvtColor(frame_copy, cv2.COLOR_BGR2GRAY)
-        #selective=cv2.addWeighted(frame_copy, 0.7, dilated, 0.3, 0.2)
-        selective=cv2.add(frame_copy, mask)   
+        #frame_copy[np.logical_not(mask)] = np.asarray([255,255,255])
+        frame_copy[np.logical_not(mask)]=255
+        selective=cv2.addWeighted(frame_copy, 0.7, closing, 0.3, 0.2)
+        #selective=cv2.add(frame_copy, closing)   
         #selective = selective.astype(np.uint8)*255
         cv2.imshow('selective', selective)
-        keypoints = detector_person.detect(dilated)
-       # keypoints = detector_person.detect(closing)
-        print(selective)
-        print(np.all(selective))
-        if (np.all(selective)==True):
-            bg=background_update(frame.copy(),bg)
+        #if (selective==np.zeros(mask.shape)):
+        #    bg=background_update(frame, bg)
+        contours, hierarchy = cv2.findContours(closing.astype(np.uint8)*255, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[-2:]
+        image_external = np.zeros(closing.shape, float)
+        for i in range(len(contours)):
+                cv2.drawContours(image_external, contours, i, 255, -1)
+        cv2.imshow('contours', image_external)
+            
+        keypoints = detector_person.detect(closing)
         im_keypoints = cv2.drawKeypoints(frame, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-        keypoints2 = detector_book.detect(dilated)
+        keypoints2 = detector_book.detect(closing)
         #keypoints2 = detector_person.detect(closing)
         im_keypoints2 = cv2.drawKeypoints(im_keypoints, keypoints2, np.array([]), (255,0,0), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
         cv2.imshow('Video',im_keypoints2)
         time.sleep(0.02)
-        idx +=1
         if cv2.waitKey(1) == ord('q'):
                 break
     print("Released Video Resource")
     cap.release()
     cv2.destroyAllWindows()
     
-change_detection('1.avi', bg, thr, idx)
+change_detection('1.avi', bg, thr)
