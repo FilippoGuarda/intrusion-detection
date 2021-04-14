@@ -1,3 +1,8 @@
+# background branch
+# TODO: make a better background subtraction mask 
+# duh
+
+
 import numpy as np
 import cv2
 import time 
