@@ -83,6 +83,8 @@ def change_detection(video_path):
         time.sleep(0.02)
         if cv2.waitKey(1) == ord('q'):
                 break
+            
+        #TODO: add logging of blobs
     print("Released Video Resource")
     cap.release()
     cv2.destroyAllWindows()
