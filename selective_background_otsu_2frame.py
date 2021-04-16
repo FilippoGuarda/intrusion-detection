@@ -32,6 +32,19 @@ def twoframedifference(frame, previousframe, distance_type, threshold):
     mask = maskbool.astype(np.uint8) * 255
     return [mask]
 
+def threeframedifference(frame,prev1,prev2, distance_type, threshold):
+    if distance_type=="L1":
+        [maskbool,mask1]=twoframedifference(frame,prev1, distance_type, threshold)
+        if len(prev2)!=0:
+            [maskbool1,mask2]=twoframedifference(prev1,prev2, distance_type, threshold)
+    #print(maskbool, maskbool1)
+    mask=np.logical_and(maskbool, maskbool1)
+    prev1[np.logical_not(mask)]=np.array([255,255,255])
+    #print(mask)
+    mask=mask.astype(np.uint8)*255
+    #cv2.imshow('frame', prev1)
+    #cv2.imshow('mask', mask)
+
 
 def pfm(hist):
     total_pixel = np.sum(hist)
@@ -45,10 +58,10 @@ def pfm(hist):
 Rectangular_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
 # Defining a variable interpolation for mean or median functions
 interpolation = np.median  # or np.mean
-alfa = 0.2
 
 
 def background_initialization(bg, n, cap, count):
+    n=n*3
     while cap.isOpened() and count < n:
         ret, frame = cap.read()
         frame=cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
@@ -64,7 +77,8 @@ def background_initialization(bg, n, cap, count):
             #else:
             #    bg.append(alfa * frame)
                 #bg[count] = (1 - alfa) * bg[count - 1] + bg[count]
-            bg.append(frame)
+            if (count % 3 != 0):   
+                bg.append(frame)
             count += 1
             # print(count)
         else:
@@ -77,9 +91,9 @@ def background_initialization(bg, n, cap, count):
     return [bg_inter, count]
 
 
-def background_update(bg1,bg, prev_bg):
-    #bg = (1 - alfa) * prev_bg + alfa * bg
-    bg1=cv2.accumulateWeighted(bg, prev_bg, 0.05)
+def background_update(bg1,bg, prev_bg, alfa):
+    bg1 = (1 - alfa) * prev_bg + alfa * bg
+    #bg1=cv2.accumulateWeighted(bg, prev_bg, 0.05)
     #bg1=cv2.GaussianBlur(bg1, (5, 5), 0)
     return bg1
 
@@ -89,10 +103,9 @@ thr = 25
 distance = Linf
 bg = []
 bg1=[]
+frame=[]
 N_frames = 30 # then refresh
 
-
-# def check_light():
 
 def sobel(img):
     dst1 = cv2.Sobel(img, -1, 1, 0, 3)
@@ -117,16 +130,18 @@ personDetectorParameters.blobColor = 255
 personDetectorParameters.filterByConvexity = False
 personDetectorParameters.filterByInertia = False
 
+
 # define params for book detection
 bookDetectorParameters.filterByArea = True
-bookDetectorParameters.minArea = 800  # 1000
-bookDetectorParameters.maxArea = 5000  # 5000
+bookDetectorParameters.minArea = 500  # 1000
+bookDetectorParameters.maxArea = 3000  # 5000
 bookDetectorParameters.minDistBetweenBlobs = 0
 bookDetectorParameters.filterByCircularity = False
 bookDetectorParameters.filterByColor = True
 bookDetectorParameters.blobColor = 255
 bookDetectorParameters.filterByConvexity = False
 bookDetectorParameters.filterByInertia = False
+
 
 detector_person = cv2.SimpleBlobDetector_create(personDetectorParameters)
 detector_book = cv2.SimpleBlobDetector_create(bookDetectorParameters)
@@ -140,7 +155,7 @@ count = 0
 #fgbg = cv2.createBackgroundSubtractorKNN(1,10,False)
 
 
-def change_detection(video_path, bg, threshold):
+def change_detection(video_path, bg, threshold,frame):
     # previous_frames = []
     cap = cv2.VideoCapture(video_path)
     prevhist = 0
@@ -164,12 +179,11 @@ def change_detection(video_path, bg, threshold):
 
 
         #mask= fgbg.apply(gray)
-
         cv2.imshow('mask', mask)
 
         #Erode mask to minimize false changes, blur to shade figures and threshold to get contours
-        eroded1 = cv2.erode(mask, None, iterations=3)
-        dilated1 = cv2.dilate(eroded1, Rectangular_kernel, iterations=3)
+        eroded1 = cv2.erode(mask,  None, iterations=3)
+        dilated1 = cv2.dilate(eroded1, Rectangular_kernel, iterations=2)
         blur = cv2.GaussianBlur(dilated1, (5, 5), 0)
         ret, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
@@ -178,53 +192,38 @@ def change_detection(video_path, bg, threshold):
         final = cv2.morphologyEx(dilated, cv2.MORPH_CLOSE, Rectangular_kernel)
 
         cv2.imshow('closed', final)
-        #compute the difference with background using alpha blending
-        #bgg = bg.astype(np.uint8)
-        #bgg1 = bg.astype(np.uint8)
-        #bgg[np.logical_not(closed)] = np.asarray([-255])
-        #closed1 = 255 - closed
-        #bgg1[np.logical_not(closed1)] = np.asarray([255])
-        #bgc = bgg + bgg1
-        #tbg = background_update(bgc, bg)
-        # bgc=bgg+gray1
-        #cv2.imshow('background', tbg.astype(np.uint8))
-        #bgmask = distance(alfa*gray+(1-alfa)*bg,bg) > 20
-        #bgmask= bgmask.astype(np.uint8) * 255
-
         hist, bins = np.histogram(final.flatten(), 256, [0, 256])
         #update background when ligth changes
         if (cond==True and hist[255] > 1.1*prevhist) :
-            #bg=cv2.accumulateWeighted(gray, bg, 0.05)
-            bg = background_update(bg1, gray, bg)
+            bg = background_update(bg1, gray, bg, 0.05)
             print('change_updated')
         prevhist=hist[255]
-        
-
-
-
-
 
         #keypoints = detector_person.detect(dilated)
         #im_keypoints = cv2.drawKeypoints(frame, keypoints, np.array([]), (0, 0, 255),
         #                                 cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
         #keypoints2 = detector_book.detect(dilated)
+        #use keypoints to update background
         #im_keypoints2 = cv2.drawKeypoints(im_keypoints, keypoints2, np.array([]), (255, 0, 0),
         #                                  cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
         #cv2.imshow('Video', im_keypoints2)
-        _, contours, hierarchy = cv2.findContours(final, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        _, contours, hierarchy = cv2.findContours(final, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+        blob_count = len(contours)
         for i, cnt in enumerate(contours):
             # if the size of the contour is greater than a threshold
             if cv2.contourArea(cnt) < 1000:
                 continue
             elif cv2.contourArea(cnt) < 2000:
-                cv2.drawContours(frame, [cnt], 0, (0, 0, 255), 1)  # if >0 shows contour
+                cv2.drawContours(frame, [cnt], 0, (0, 0, 255), 3)  # if >0 shows contour
             else:
-                (x, y, w, h) = cv2.boundingRect(cnt)
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 3)
+                #(x, y, w, h) = cv2.boundingRect(cnt)
+                #cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 3)
+                cv2.drawContours(frame, [cnt], 0, (255, 255, 255), 3)
 
         cv2.imshow('contours', frame)
+        if (blob_count<1):
+            bg = background_update(bg1, gray, bg, 0.7)
         #cv2.resizeWindow('contours', 500, 500)
-
         time.sleep(0.02)
         cond = True
         if cv2.waitKey(1) == ord('q'):
@@ -234,4 +233,4 @@ def change_detection(video_path, bg, threshold):
     cv2.destroyAllWindows()
 
 
-change_detection('1.avi', bg, thr)
+change_detection('1.avi', bg, thr, frame)
