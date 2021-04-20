@@ -3,39 +3,6 @@ import cv2
 import time 
 
 
-
-# blob detector parameters
-
-personDetectorParameters = cv2.SimpleBlobDetector_Params()
-bookDetectorParameters = cv2.SimpleBlobDetector_Params()
-
-
-# define params for person detection
-personDetectorParameters.filterByArea = True
-personDetectorParameters.minArea = 6000 
-personDetectorParameters.maxArea = 10000
-personDetectorParameters.minDistBetweenBlobs = 0
-personDetectorParameters.filterByCircularity = False
-personDetectorParameters.filterByColor = True
-personDetectorParameters.blobColor = 255
-personDetectorParameters.filterByConvexity = False
-personDetectorParameters.filterByInertia = False
-
-
-# define params for book detection
-bookDetectorParameters.filterByArea = True
-bookDetectorParameters.minArea = 1000 #1000
-bookDetectorParameters.maxArea = 4000 #5000
-bookDetectorParameters.minDistBetweenBlobs = 0
-bookDetectorParameters.filterByCircularity = False
-bookDetectorParameters.filterByColor = True
-bookDetectorParameters.blobColor = 255
-bookDetectorParameters.filterByConvexity = False
-bookDetectorParameters.filterByInertia = False
-
-detector_person = cv2.SimpleBlobDetector_create(personDetectorParameters)
-detector_book = cv2.SimpleBlobDetector_create(bookDetectorParameters)
-
 f = open("detected_log.txt", "w+") 
 
 
@@ -114,6 +81,7 @@ def change_detection(video_path):
         
         # find a way to distinguish if blob was removed from backgound or was added to it
         contours, hierarchy = cv2.findContours(closing.astype(np.uint8)*255, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        # variable initialization as zero arrays
         image_external = np.zeros(closing.shape, np.uint8)
         colored_contours = np.zeros(frame.shape)
         original_contour = np.zeros(closing.shape, np.uint8)
@@ -127,6 +95,7 @@ def change_detection(video_path):
             if skip_background(contours, frame, original_contour, shift1, shift2, i, 25):
                 continue
             else:
+                # generate log of detected objects per frame
                 object_detector(contours, i, image_external, colored_contours, frame_number)
         
           
@@ -137,14 +106,8 @@ def change_detection(video_path):
         masked_image = np.copy(frame)
         masked_image[image_external < 50] = 0
         cv2.imshow('masked image', masked_image)
-        #TODO: generate log of detected objects per frame
-        
-        # draw keypoints over grayscale image
-        # keypoints = detector_person.detect(image_external)
-        # im_keypoints = cv2.drawKeypoints(frame, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-        # keypoints2 = detector_book.detect(image_external)
-        # im_keypoints2 = cv2.drawKeypoints(im_keypoints, keypoints2, np.array([]), (255,0,0), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-        # # cv2.imshow('Video',im_keypoints2)
+
+
         time.sleep(0.02)
         if cv2.waitKey(1) == ord('q'):
                 break
