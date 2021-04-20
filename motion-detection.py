@@ -36,6 +36,8 @@ bookDetectorParameters.filterByInertia = False
 detector_person = cv2.SimpleBlobDetector_create(personDetectorParameters)
 detector_book = cv2.SimpleBlobDetector_create(bookDetectorParameters)
 
+f = open("detected_log.txt", "w+") 
+
 
 
 def skip_background(contours, frame, original_contour, shift1, shift2, index, thresh = 30):
@@ -47,29 +49,38 @@ def skip_background(contours, frame, original_contour, shift1, shift2, index, th
     # take two shifted contours, add them and mask using original contours to obtain internal contour
     cv2.drawContours(shift1, contours, index, 255, 10, offset=(5,0))
     cv2.drawContours(shift2, contours, index, 255, 10, offset=(-5,0))
+    # bitwise or sums white pixels and masks with previously found contour, get internal contour
     internal_contour = cv2.bitwise_or(shift1, shift2, mask = original_contour)
-    # get external contour
+    # get external contour, 255-original contour creates inverted mask
     external_contour = cv2.bitwise_or(shift1, shift2, mask = 255 - original_contour)
     external_median = np.median(frame[external_contour > 0], overwrite_input=True)
     internal_median = np.median(frame[internal_contour > 0], overwrite_input=True)
     if np.abs(external_median - internal_median) < thresh:
         return True
     
-def object_detector(contours, index, mask, color_mask): 
+def object_detector(contours, index, mask, color_mask, frame_number): 
     #detect, classify and log objects moving in the frame
+
+    
+    #define area and perimeter
+    area = cv2.contourArea(contours[index])
+    perimeter = cv2.arcLength(contours[index], True)
     
     #detect person
-    if (6000 < cv2.contourArea(contours[index]) < 20000) and (cv2.arcLength(contours[index], True) < 900):
+    if (6000 < area < 20000) and (perimeter  < 900):
         cv2.drawContours(mask, contours, index, 255, -1)
         cv2.drawContours(color_mask, contours, index, [0,0,255], -1)
+        f.write("frame %d, detected person, blob area: %d, blob perimeter: %d\r\n"% (frame_number, area, perimeter))
+        
     #detect book    
-    if (500 < cv2.contourArea(contours[index]) < 5000):
+    if (500 < area < 5000):
         cv2.drawContours(mask, contours, index, 255, -1)
         cv2.drawContours(color_mask, contours, index, [255,0,0], -1)
+        f.write("frame %d, detected book, blob area: %d, blob perimeter: %d\r\n"% (frame_number, area, perimeter))
 
 # define background subtraction method
 # fgbg = cv2.createBackgroundSubtractorMOG2(history = 500, varThreshold = 50, detectShadows=False)
-fgbg = cv2.createBackgroundSubtractorKNN(history = 150, dist2Threshold = 200, detectShadows=True)
+fgbg = cv2.createBackgroundSubtractorKNN(history = 150, dist2Threshold = 150, detectShadows=True)
 
 
 
@@ -91,7 +102,7 @@ def change_detection(video_path):
         cv2.imshow('mask', mask)
         blur=cv2.GaussianBlur(mask,(5,5),0)
         cv2.imshow('Blur', blur)
-        ret,thresh = cv2.threshold(blur,50,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        ret,thresh = cv2.threshold(blur,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
         cv2.imshow('thresh', thresh)
         
        
@@ -101,7 +112,7 @@ def change_detection(video_path):
         closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)), iterations = 2)
         cv2.imshow('closing', closing)
         
-        # TODO: find a way to distinguish if blob was removed from backgound or was added to it
+        # find a way to distinguish if blob was removed from backgound or was added to it
         contours, hierarchy = cv2.findContours(closing.astype(np.uint8)*255, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         image_external = np.zeros(closing.shape, np.uint8)
         colored_contours = np.zeros(frame.shape)
@@ -112,27 +123,28 @@ def change_detection(video_path):
         
         for i in range(len(contours)):
             
+            # reducing treshold augments detection capability, but more false positives
             if skip_background(contours, frame, original_contour, shift1, shift2, i, 20):
                 continue
             else:
-                object_detector(contours, i, image_external, colored_contours)
+                object_detector(contours, i, image_external, colored_contours, frame_number)
         
           
-        # cv2.imshow('contours', image_external)
-        # cv2.imshow('contours', colored_contours)
+        cv2.imshow('contours', image_external)
+        cv2.imshow('contours', colored_contours)
         
         #visualize masked image
         masked_image = np.copy(frame)
-        masked_image[image_external < 50] = 0
+        masked_image[image_external < 0] = 0
         cv2.imshow('masked image', masked_image)
         #TODO: generate log of detected objects per frame
         
         # draw keypoints over grayscale image
-        keypoints = detector_person.detect(image_external)
-        im_keypoints = cv2.drawKeypoints(frame, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-        keypoints2 = detector_book.detect(image_external)
-        im_keypoints2 = cv2.drawKeypoints(im_keypoints, keypoints2, np.array([]), (255,0,0), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-        # cv2.imshow('Video',im_keypoints2)
+        # keypoints = detector_person.detect(image_external)
+        # im_keypoints = cv2.drawKeypoints(frame, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+        # keypoints2 = detector_book.detect(image_external)
+        # im_keypoints2 = cv2.drawKeypoints(im_keypoints, keypoints2, np.array([]), (255,0,0), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+        # # cv2.imshow('Video',im_keypoints2)
         time.sleep(0.02)
         if cv2.waitKey(1) == ord('q'):
                 break
@@ -144,3 +156,4 @@ def change_detection(video_path):
     cv2.destroyAllWindows()
     
 change_detection('1.avi')
+f.close()
