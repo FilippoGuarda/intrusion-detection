@@ -135,7 +135,7 @@ def change_detection(video_path):
         
         #visualize masked image
         masked_image = np.copy(frame)
-        masked_image[image_external < 0] = 0
+        masked_image[image_external < 50] = 0
         cv2.imshow('masked image', masked_image)
         #TODO: generate log of detected objects per frame
         
