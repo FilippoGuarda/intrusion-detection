@@ -73,7 +73,7 @@ def object_detector(contours, index, mask, color_mask, frame_number):
         f.write("frame %d, detected person, blob area: %d, blob perimeter: %d\r\n"% (frame_number, area, perimeter))
         
     #detect book    
-    if (500 < area < 5000):
+    if (600 < area < 3000) and (perimeter < 200):
         cv2.drawContours(mask, contours, index, 255, -1)
         cv2.drawContours(color_mask, contours, index, [255,0,0], -1)
         f.write("frame %d, detected book, blob area: %d, blob perimeter: %d\r\n"% (frame_number, area, perimeter))
@@ -124,7 +124,7 @@ def change_detection(video_path):
         for i in range(len(contours)):
             
             # reducing treshold augments detection capability, but more false positives
-            if skip_background(contours, frame, original_contour, shift1, shift2, i, 20):
+            if skip_background(contours, frame, original_contour, shift1, shift2, i, 25):
                 continue
             else:
                 object_detector(contours, i, image_external, colored_contours, frame_number)
