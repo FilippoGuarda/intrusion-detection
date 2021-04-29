@@ -259,11 +259,11 @@ def change_detection(video_path, bg, threshold,frame):
         #im_out = thresh | im_floodfill_inv
         #cv2.imshow('combine', im_out)
         # try with opening and closing of the binary image
-        opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3)), iterations = 1)
+        opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5)), iterations = 1)
         cv2.imshow('opening', opening)
         # dilated = cv2.dilate(opening, None, iterations=2)
         # cv2.imshow('dilated', dilated)
-        closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)), iterations = 2)
+        closing = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)), iterations = 3)
         cv2.imshow('closing', closing)
         h, w = gray.shape[:2]
         mask1 = np.zeros((h+2, w+2), np.uint8)
