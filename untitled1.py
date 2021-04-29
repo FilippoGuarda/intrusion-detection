@@ -49,7 +49,6 @@ def threeframedifference(frame,prev1,prev2, distance_type, threshold):
     mask=mask.astype(np.uint8)*255
 
 
-
 def pfm(hist):
     total_pixel = np.sum(hist)
     pfm = []
@@ -59,13 +58,12 @@ def pfm(hist):
     return np.asarray(pfm)
 
 
-Rectangular_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+#Rectangular_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
 # Defining a variable interpolation for mean or median functions
 interpolation = np.median  # or np.mean
 
-
 def background_initialization(bg, n, cap, count):
-    n=n*3
+    n=n*2
     while cap.isOpened() and count < n:
         ret, frame = cap.read()
         frame=cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
@@ -81,7 +79,8 @@ def background_initialization(bg, n, cap, count):
             #else:
             #    bg.append(alfa * frame)
                 #bg[count] = (1 - alfa) * bg[count - 1] + bg[count]
-            if (count % 3 != 0):   
+            if (count % 2 != 0): 
+                #frame = cv2.GaussianBlur(frame, (5, 5), 0)
                 bg.append(frame)
             count += 1
             # print(count)
@@ -101,14 +100,37 @@ def background_update(bg1,bg, prev_bg, alfa):
     #bg1=cv2.GaussianBlur(bg1, (5, 5), 0)
     return bg1
 
-def b_up(bg2,new,bg,prev,alfa):
-    new2=new
-    bg2.append(new)
-    bg2.append(bg)
-    bg2.append(prev)
-    new1=interpolation(bg2)
-    new2 = (1 - alfa) * new1 + alfa * new2
-    return new2
+def skip_background(contours, frame, final, shift1, shift2, index, thresh):
+    # ignore contours that are part of the background
+
+    # take two shifted contours, add them and mask using original contours to obtain internal contour
+    #print(index)
+    cv2.drawContours(shift1, contours, index, 255, 10, offset=(0, 0))
+    shift1=cv2.erode(shift1,kernel,iterations=4)
+    cv2.imshow('internal',shift1)
+    cv2.drawContours(shift2, contours, index, 255, 10, offset=(0, 0))
+    shift2=cv2.dilate(shift2, kernel, iterations=5)
+    shift2=shift2-final
+    shift2=cv2.erode(shift2,kernel,iterations=4)
+    cv2.imshow('external', shift2)
+    external_median =(frame[shift1 > 0])
+    hist = cv2.calcHist([external_median], [0], None, [256], [0, 256])
+    internal_median =(frame[shift2 > 0])
+    hist1 = cv2.calcHist([internal_median], [0], None, [256], [0, 256])
+    #print('internal %d',internal_median)
+    compare= cv2.compareHist(hist, hist1, cv2.HISTCMP_CORREL)
+    #print(compare)
+    if compare > thresh:
+        return True
+
+#def b_up(bg2,new,bg,prev,alfa):
+    #new2=new
+    #bg2.append(new)
+    #bg2.append(bg)
+    #bg2.append(prev)
+    #new1=interpolation(bg2)
+    #new2 = (1 - alfa) * new1 + alfa * new2
+    #return new2
 ###Define change detection parameters
 thr = 25
 distance = L2
@@ -193,11 +215,10 @@ def change_detection(video_path, bg, threshold,frame):
 
         #mask= fgbg.apply(gray)
         cv2.imshow('mask', mask)
-
-        blur=cv2.GaussianBlur(mask,(11,11),0)
-        #cv2.imshow('Blur', blur)
+        blur=cv2.GaussianBlur(mask,(5,5),0)
+        cv2.imshow('Blur', blur)
         ret,thresh = cv2.threshold(blur,150,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-        #cv2.imshow('thresh', thresh)
+        cv2.imshow('thresh', thresh)
         
        
         # try with opening and closing of the binary image
@@ -222,32 +243,66 @@ def change_detection(video_path, bg, threshold,frame):
             bg = background_update(bg1, gray, bg, 0.05)
             print('change_updated')
         prevhist=hist[255]
-        prevhist=hist[255]
  
+        #for i in range(len(contours)): 
+        # reducing treshold augments detection capability, but more false positives
+        #    if skip_background(contours, frame, original_contour, shift1, shift2, i, 20):
+        #        continue
+        #    else:
+        #        object_detector(contours, i, image_external, colored_contours, frame_number)
+        
         #keypoints = detector_person.detect(dilated)
         #im_keypoints = cv2.drawKeypoints(frame, keypoints, np.array([]), (0, 0, 255),
         #                                 cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+        sob=sobel(closing)
+        cv2.imshow('Sobel', sob)
         keypoints2 = detector_book.detect(closing)
         #use keypoints to update background
         frame = cv2.drawKeypoints(gray, keypoints2, np.array([]), (255, 0, 0),
                                           cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
         cv2.imshow('Video', frame)
         _, contours, hierarchy = cv2.findContours(closing, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+        final = closing
         blob_count = len(contours)
-        for i, cnt in enumerate(contours):
+        #for i, cnt in enumerate(contours):
             # if the size of the contour is greater than a threshold
-            if cv2.contourArea(cnt) < 6000:
-                continue
+            #if cv2.contourArea(cnt) < 6000:
+            #    continue
             #elif cv2.contourArea(cnt) < 2000:
             #    cv2.drawContours(frame, [cnt], 0, (0, 0, 255), 3)  # if >0 shows contour
-            else:
-                (x, y, w, h) = cv2.boundingRect(cnt)
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 3)
+            #else:
+                #(x, y, w, h) = cv2.boundingRect(cnt)
+                #cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 3)
                 #cv2.drawContours(im_keypoints2, [cnt], 0, (255, 255, 255), 3)
 
-        cv2.imshow('contours', frame)
+        #cv2.imshow('contours', frame)
         if (blob_count<1):
-            bg = background_update(bg1, gray, bg, 0.7)
+            bg = background_update(bg1, gray, bg, 0.2)
+        
+        image_external = np.zeros(final.shape, np.uint8)
+        colored_contours = np.zeros(frame.shape)
+        original_contour = np.zeros(final.shape, np.uint8)
+        shift2 = np.zeros(final.shape, np.uint8)
+        shift1 = np.zeros(final.shape, np.uint8)
+
+        for i, cnt in enumerate(contours):
+             #person detector
+             if cv2.contourArea(cnt)>6000:
+                 #draw person in blue
+                cv2.drawContours(frame, contours,i,[255, 0, 0], -1)
+
+        for j, cnt in enumerate(contours):
+            # object detector
+            if cv2.contourArea(contours[j]) < 100 or cv2.contourArea(contours[j]) > 2000:
+                continue
+            elif skip_background(contours, frame, final , shift1, shift2, j, 0.9) == True:
+                #draw false object in red
+                cv2.drawContours(frame, contours, j, [0, 0, 255], -1)
+            else :
+                #draw true objects in green
+                cv2.drawContours(frame, contours, j,[0, 255, 0], -1)
+        
+        cv2.imshow('contours', frame)
         #cv2.resizeWindow('contours', 500, 500)
         time.sleep(0.02)
        # if (cond==True):
