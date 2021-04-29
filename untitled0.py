@@ -240,23 +240,43 @@ def change_detection(video_path, bg, threshold,frame):
 
         #mask= fgbg.apply(gray)
         cv2.imshow('mask', mask)
-        blur=cv2.GaussianBlur(mask,(7,7),0)
+        blur=cv2.GaussianBlur(mask,(5,5),0)
         cv2.imshow('Blur', blur)
         #blur2 = cv2.filter2D(blur,-1,denoising_kernel)
         #blur2=cv2.fastNlMeansDenoising(blur)
         #cv2.imshow('Blur2', blur2)
         ret,thresh = cv2.threshold(blur,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-        cv2.imshow('thresh', thresh)
-        
-       
+        #h, w = gray.shape[:2]
+        #mask1 = np.zeros((h+2, w+2), np.uint8)
+        #thresh2=np.copy(thresh)
+        #cv2.floodFill(thresh2, mask1, (0,0), 255);
+        #cv2.imshow('floodfill1', thresh2)
+        # Invert floodfilled image
+        #im_floodfill_inv = cv2.bitwise_not(thresh2)
+    	# Combine the two images to get the foreground.
+        #cv2.imshow('floodfill', im_floodfill_inv)
+        #cv2.imshow('thresh', thresh)
+        #im_out = thresh | im_floodfill_inv
+        #cv2.imshow('combine', im_out)
         # try with opening and closing of the binary image
         opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3)), iterations = 1)
-        #cv2.imshow('opening', opening)
+        cv2.imshow('opening', opening)
         # dilated = cv2.dilate(opening, None, iterations=2)
         # cv2.imshow('dilated', dilated)
         closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)), iterations = 2)
-        #cv2.imshow('closing', closing)
-
+        cv2.imshow('closing', closing)
+        h, w = gray.shape[:2]
+        mask1 = np.zeros((h+2, w+2), np.uint8)
+        thresh2=np.copy(closing)
+        cv2.floodFill(thresh2, mask1, (0,0), 255);
+        #cv2.imshow('floodfill1', thresh2)
+        # Invert floodfilled image
+        im_floodfill_inv = cv2.bitwise_not(thresh2)
+    	# Combine the two images to get the foreground.
+        cv2.imshow('floodfill', im_floodfill_inv)
+        cv2.imshow('thresh', closing)
+        im_out = closing | im_floodfill_inv
+        cv2.imshow('combine', im_out)
         hist, bins = np.histogram(closing.flatten(), 256, [0, 256])
         #update background when ligth changes
         #if (cond==True and hist[255] > 1.1*prevhist) :
@@ -289,20 +309,20 @@ def change_detection(video_path, bg, threshold,frame):
         #cv2.imshow('Video', frame)
         #_, contours, hierarchy = cv2.findContours(closing, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
         
-        edged = cv2.Canny(thresh, 60, 200)
-        cv2.imshow('Video', edged)
+        #edged = cv2.Canny(thresh, 60, 200)
+        #cv2.imshow('Video', edged)
         
-        _, contours, hierarchy = cv2.findContours(closing, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_KCOS)
+        _, contours, hierarchy = cv2.findContours(im_out, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_KCOS)
         final = closing
         blob_count = len(contours)
-        for c in contours:
-            hull = cv2.convexHull(c)
-            cv2.drawContours(frame, [hull], 0, (0, 255, 0),2)  
+        #for c in contours:
+        #    hull = cv2.convexHull(c)
+        #    cv2.drawContours(frame, [hull], 0, (0, 255, 0),2)  
             #cv2.drawContours(frame, c, 0, (0, 255, 0), 2) 
             #param = cv2.arcLength(c, True)
             # Approximate what type of shape this is
             #approx = cv2.approxPolyDP(c, 0.01 * param, True)
-        cv2.imshow("hull", frame)
+        #cv2.imshow("hull", frame)
         #for i, cnt in enumerate(contours):
             # if the size of the contour is greater than a threshold
         #    if cv2.contourArea(cnt) < 6000:
@@ -316,7 +336,7 @@ def change_detection(video_path, bg, threshold,frame):
 
         #cv2.imshow('contours', frame)
         if (blob_count<1):
-            bg = background_update(bg1, gray, bg, 0.2)
+            bg = background_update(bg1, gray, bg, 0.5)
             print('change_updated2')
         #cv2.resizeWindow('contours', 500, 500)
         #image_external = np.zeros(final.shape, np.uint8)
