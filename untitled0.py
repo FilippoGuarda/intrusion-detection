@@ -265,18 +265,32 @@ def change_detection(video_path, bg, threshold,frame):
         # cv2.imshow('dilated', dilated)
         closing = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)), iterations = 3)
         cv2.imshow('closing', closing)
-        h, w = gray.shape[:2]
-        mask1 = np.zeros((h+2, w+2), np.uint8)
-        thresh2=np.copy(closing)
-        cv2.floodFill(thresh2, mask1, (0,0), 255);
+        
+        edges = frame.astype(np.uint8)
+        edges[np.logical_not(closing)] = np.asarray([-255])
+        cv2.imshow('e', edges)
+        #find edges and use as a mask for floodfill
+        edges = cv2.Canny(edges,100,200)
+        mask1 = cv2.copyMakeBorder(edges, 1, 1, 1, 1, cv2.BORDER_CONSTANT, 0)
+        cv2.imshow('a0', mask1)
+        cv2.imshow('a0', mask1)
+        final2 = np.copy(closing)
+        cv2.floodFill(final2, mask1, (0, 0), 255);
+        im_floodfill_inv = cv2.bitwise_not(final2)
+        #h, w = gray.shape[:2]
+        #mask1 = np.zeros((h+2, w+2), np.uint8)
+        #thresh2=np.copy(closing)
+        #cv2.floodFill(thresh2, mask1, (0,0), 255);
         #cv2.imshow('floodfill1', thresh2)
         # Invert floodfilled image
-        im_floodfill_inv = cv2.bitwise_not(thresh2)
+        #im_floodfill_inv = cv2.bitwise_not(thresh2)
     	# Combine the two images to get the foreground.
-        cv2.imshow('floodfill', im_floodfill_inv)
-        cv2.imshow('thresh', closing)
-        im_out = closing | im_floodfill_inv
-        cv2.imshow('combine', im_out)
+        #cv2.imshow('floodfill', im_floodfill_inv)
+        #cv2.imshow('thresh', closing)
+        #im_out = closing | im_floodfill_inv
+        #cv2.imshow('combine', im_out)
+        out = closing | im_floodfill_inv
+        cv2.imshow('floodfill', out)
         hist, bins = np.histogram(closing.flatten(), 256, [0, 256])
         #update background when ligth changes
         #if (cond==True and hist[255] > 1.1*prevhist) :
@@ -312,7 +326,7 @@ def change_detection(video_path, bg, threshold,frame):
         #edged = cv2.Canny(thresh, 60, 200)
         #cv2.imshow('Video', edged)
         
-        _, contours, hierarchy = cv2.findContours(im_out, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_KCOS)
+        _, contours, hierarchy = cv2.findContours(out, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_KCOS)
         final = closing
         blob_count = len(contours)
         #for c in contours:
