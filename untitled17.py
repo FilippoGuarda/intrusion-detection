@@ -194,23 +194,23 @@ def background_update(bg1,bg, prev_bg, alfa):
     #bg1=cv2.GaussianBlur(bg1, (5, 5), 0)
     return bg1
 
-def skip_background(contours, frame, mask, shift1, shift2, index, thresh):
+def skip_background(contours, frame, final, shift1, shift2, index, thresh):
     # ignore contours that are part of the background
 
     # take two shifted contours, add them and mask using original contours to obtain internal contour
     #print(index)
-    cv2.drawContours(shift1, contours, index, 255, -1, offset=(0, 0))
+    cv2.drawContours(shift1, contours, index, 255, 10, offset=(0, 0))
     shift1=cv2.erode(shift1,kernel,iterations=4)
     #cv2.imshow('internal',shift1)
     cv2.drawContours(shift2, contours, index, 255, 10, offset=(0, 0))
-    #shift2=cv2.dilate(shift2, kernel, iterations=5)
-    shift2=shift2-mask
-    #shift2=cv2.erode(shift2,kernel,iterations=4)
+    shift2=cv2.dilate(shift2, kernel, iterations=5)
+    shift2=shift2-final
+    shift2=cv2.erode(shift2,kernel,iterations=4)
     #cv2.imshow('external', shift2)
-    internal_contour =(frame[shift1 > 0])
-    hist = cv2.calcHist([internal_contour], [0], None, [256], [0, 256])
-    external_contour =(frame[shift2 > 0])
-    hist1 = cv2.calcHist([external_contour], [0], None, [256], [0, 256])
+    external_median =(frame[shift1 > 0])
+    hist = cv2.calcHist([external_median], [0], None, [256], [0, 256])
+    internal_median =(frame[shift2 > 0])
+    hist1 = cv2.calcHist([internal_median], [0], None, [256], [0, 256])
     #print('internal %d',internal_median)
     compare= cv2.compareHist(hist, hist1, cv2.HISTCMP_CORREL)
     #print(compare)
@@ -319,7 +319,7 @@ def change_detection(video_path, bg, threshold,frame,b):
             break
         #Convert to grayscale and blur frames
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        #gray1=linear_stretching(np.copy(gray), 255,170)
+        gray1=linear_stretching(np.copy(gray), 255,170)
         #gray2=cv2.bitwise_not(gray1.astype(np.uint8))
         gray4 = 255-gray1.astype(np.uint8)
         cv2.imshow('gray4', gray4)
@@ -359,7 +359,7 @@ def change_detection(video_path, bg, threshold,frame,b):
         # try with opening and closing of the binary image
         opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3)), iterations = 3)
         #cv2.imshow('opening', opening)
-        dilated = cv2.dilate(opening, None, iterations=12)
+        dilated = cv2.dilate(opening, None, iterations=13)
         dilated2 = cv2.bitwise_not(dilated)
         #clos = cv2.morphologyEx(opening, cv2.MORPH_CLOSE,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5)), iterations = 3)
         #cv2.imshow("clos", dilated)
@@ -379,16 +379,16 @@ def change_detection(video_path, bg, threshold,frame,b):
         ret6,thresh6 = cv2.threshold(blur6,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
         #cv2.imshow('mask6', mask6)
         #cv2.imshow('blur6', blur6)
-        #cv2.imshow('thresh6', thresh6)
-        #edges[np.logical_not(closing)] = np.asarray(0)
-        #edges18 =bg.astype(np.uint8)
-        #edges18[np.logical_not(closing)] = np.asarray(0)
+        cv2.imshow('thresh6', thresh6)
+        edges[np.logical_not(closing)] = np.asarray(0)
+        edges18 =bg.astype(np.uint8)
+        edges18[np.logical_not(closing)] = np.asarray(0)
         #cv2.imshow('e', edges)
         #find edges and use as a mask for floodfill
         #edges = cv2.Canny(edges,0,200)
         
-        #edges = auto_canny(edges)
-        #edges18 = auto_canny(edges18)
+        edges = auto_canny(edges)
+        edges18 = auto_canny(edges18)
         #cv2.imshow('etrue', edges)
         #cv2.imshow('eback', edges18)
         #edges = sobel(edges)
@@ -399,8 +399,8 @@ def change_detection(video_path, bg, threshold,frame,b):
         closing2 = cv2.morphologyEx(opening2, cv2.MORPH_CLOSE,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5)), iterations = 2)
         #
         #cv2.imshow('e1', edges2)
-        #cv2.imshow('e2', opening2)
-        #cv2.imshow('e22', closing2)
+        cv2.imshow('e2', opening2)
+        cv2.imshow('e22', closing2)
         f =gray.astype(np.uint8)
         f[np.logical_not(closing2)]= np.asarray(0)
         #cv2.imshow('e3', f)
@@ -453,22 +453,22 @@ def change_detection(video_path, bg, threshold,frame,b):
             bg3[np.logical_not(closing3)]=np.asarray(0)
             bg4=bg.astype(np.uint8)
             bg4[np.logical_not(closing)]=np.asarray(0)
-            hist1 = cv2.calcHist([bg2], [0], closing3, [256], [0, 256])
-            cv2.normalize(hist1, hist1, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
+            #hist1 = cv2.calcHist([bg2], [0], closing3, [256], [0, 256])
+            #cv2.normalize(hist1, hist1, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
             #print(hist1)
-            hist2 = cv2.calcHist([im], [0], closing3, [256], [0, 256])
-            cv2.normalize(hist2, hist2, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
-            coeff=cv2.compareHist(hist1, hist2, cv2.HISTCMP_CORREL)
+            #hist2 = cv2.calcHist([im], [0], closing3, [256], [0, 256])
+            #cv2.normalize(hist2, hist2, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
+            #coeff=cv2.compareHist(hist1, hist2, cv2.HISTCMP_CORREL)
             #l6= linear_stretching(bg,255*coeff, 0)
             #cv2.imshow('bg6', l6.astype(np.uint8))
-            print("c", coeff)
-            l3= bg2*coeff
-            l4= im2+bg4
+            #print("c", coeff)
+            #l3= bg2*coeff
+            l4= im2+0.98*bg4
             #sigma=1.5
             #l5 = cv2.filter2D(l4.astype(np.uint8),-1,mean_kernel)
             #l6 = cv2.GaussianBlur(l4.astype(np.uint8), (k_size,k_size) , sigma)
             #a = hist_match(bg7,l4)
-            #cv2.imshow('bg6', l4.astype(np.uint8))
+            cv2.imshow('bg6', l4.astype(np.uint8))
             #cv2.imshow('bg5', a)
             #cv2.imshow('bg7', bg7)
             #l4=cv2.normalize(l4/5, None, 0, 255, cv2.NORM_MINMAX)
@@ -495,11 +495,11 @@ def change_detection(video_path, bg, threshold,frame,b):
             #cv2.imshow('l2', l2.astype(np.uint8))
             #cv2.imshow('l2', l2.astype(np.uint8))
             #bg = background_update(bg1, gray, bg, 0.05)
-            bg = background_update(bg1, l4, bg, 0.2)
+            bg = background_update(bg1, l4, bg, 0.08)
             print('change_updated')
             
         elif (cond==True and hist[255] < 0.6*prevhist):
-            bg = background_update(bg1, gray, bg, 0.6)
+            bg = background_update(bg1, gray, bg, 0.2)
             print('change_updated2')
         prevhist=hist[255]
  
