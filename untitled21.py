@@ -452,7 +452,7 @@ def change_detection(video_path, bg, threshold,frame,b):
         # try with opening and closing of the binary image
         opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3)), iterations = 1)
         cv2.imshow('opening', opening)
-        dilated = cv2.dilate(opening, None, iterations=10)
+        dilated = cv2.dilate(opening, None, iterations=8)
        # dilated2 = cv2.bitwise_not(dilated)
         #clos = cv2.morphologyEx(opening, cv2.MORPH_CLOSE,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5)), iterations = 3)
         cv2.imshow("clos", dilated)
@@ -530,7 +530,7 @@ def change_detection(video_path, bg, threshold,frame,b):
         #cv2.imshow('combine', im_out)
        
 
-        hist, bins = np.histogram(thresh.flatten(), 256, [0, 256])
+        hist, bins = np.histogram(thresh6.flatten(), 256, [0, 256])
         #update background when ligth changes
         #if (cond==True and hist[255] > 1.1*prevhist) :
         #    bg_prev = bg
@@ -585,7 +585,7 @@ def change_detection(video_path, bg, threshold,frame,b):
                 #cv2.drawContours(im_keypoints2, [cnt], 0, (255, 255, 255), 3)
 
         #cv2.imshow('contours', frame)
-        if (hist[255] < 0.3*prevhist):
+        if (hist[255] < 0.2*prevhist):
             bg = selective_background_update(bg1, gray, bg, 0.2, closing3)
             #bg = background_update(bg1, im2, bg, 0.1)
             print('background update')
