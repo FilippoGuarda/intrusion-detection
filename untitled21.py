@@ -424,6 +424,8 @@ def change_detection(video_path, bg, threshold,frame,b):
         #cv2.imshow('gray23', bg2)
         #Compute background suptraction
         mask = (distance(gray, bg) > 0.5)
+        #m = distance(gray, bg)
+        #mask = (m > np.mean(m))
         #m  = NCC(gray,bg.astype(np.uint8))
         #mask7 = m
         #mask7 = (mask7.astype(np.uint8) * 255)
@@ -465,7 +467,8 @@ def change_detection(video_path, bg, threshold,frame,b):
         #edges = gray.astype(np.uint8)
         mask[np.logical_not(closing)]=np.asarray(0)
         blur[np.logical_not(closing)]=np.asarray(0)
-        mask6 =  (distance(gray, bg) > 0.26)
+        mask6 =  (distance(gray, bg) > 0.25)
+        #mask6 = m > np.mean(m)/2
         mask6 = mask6.astype(np.uint8) * 255
         mask6[np.logical_not(closing)]=np.asarray(0)
         blur6=cv2.GaussianBlur(mask6,(5,5),3)
@@ -586,7 +589,7 @@ def change_detection(video_path, bg, threshold,frame,b):
 
         #cv2.imshow('contours', frame)
         if (hist[255] < 0.2*prevhist):
-            bg = selective_background_update(bg1, gray, bg, 0.2, closing3)
+            bg = selective_background_update(bg1, gray, bg, 0.3, closing3)
             #bg = background_update(bg1, im2, bg, 0.1)
             print('background update')
         #cv2.resizeWindow('contours', 500, 500)
@@ -617,7 +620,7 @@ def change_detection(video_path, bg, threshold,frame,b):
         time.sleep(0.02)
        # if (cond==True):
        #     cond2 = True
-        if (cond==True and hist[255] > 1.1*prevhist) :
+        if (cond==True and hist[255] > 1.097*prevhist) :
             #bg9 =[] 
            # bg2=bg.astype(np.uint8)
             #bg3=bg.astype(np.uint8)
@@ -674,7 +677,7 @@ def change_detection(video_path, bg, threshold,frame,b):
             #bg = background_update(bg1, gray, bg, 0.05)
             bg = selective_background_update(bg1, gray, bg, 0.2, closing3)
             #bg = background_update(bg1, l4, bg, 0.2, inv_closing)
-            #print('change_updated')
+            print('change_updated')
             
        # elif (cond==True and hist[255] == 0):
        #     bg = background_update(bg1, gray, bg, 0.2)
