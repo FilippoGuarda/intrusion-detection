@@ -315,7 +315,7 @@ def change_detection(video_path, bg, threshold,frame,b):
         # try with opening and closing of the binary image
         opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3)), iterations = 1)
         cv2.imshow('opening', opening)
-        dilated = cv2.dilate(opening, None, iterations=8)
+        dilated = cv2.dilate(opening,  cv2.getStructuringElement(cv2.MORPH_RECT,(7,7)), iterations=3)
        # dilated2 = cv2.bitwise_not(dilated)
         #clos = cv2.morphologyEx(opening, cv2.MORPH_CLOSE,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5)), iterations = 3)
         cv2.imshow("clos", dilated)
@@ -381,7 +381,7 @@ def change_detection(video_path, bg, threshold,frame,b):
 
         for j, cnt in enumerate(contours):
             # object detector
-            if cv2.contourArea(contours[j]) < 100 or cv2.contourArea(contours[j]) > 2000:
+            if cv2.contourArea(contours[j]) < 450 or cv2.contourArea(contours[j]) > 2000:
                 continue
             elif skip_background(contours, frame, final , shift1, shift2, j, 0.9) == True:
                 #draw false object in red
