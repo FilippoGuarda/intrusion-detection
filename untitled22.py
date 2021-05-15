@@ -355,17 +355,12 @@ def change_detection(video_path, bg, threshold,frame,b):
             bg = selective_background_update(bg1, gray, bg, 0.3, closing3)
             #bg = background_update(bg1, im2, bg, 0.1)
             print('background update')
-        #cv2.resizeWindow('contours', 500, 500)
-        #image_external = np.zeros(final.shape, np.uint8)
-        #colored_contours = np.zeros(frame.shape)
-        #original_contour = np.zeros(final.shape, np.uint8)
+
         shift2 = np.zeros(final.shape, np.uint8)
         shift1 = np.zeros(final.shape, np.uint8)
 
         for i, cnt in enumerate(contours):
              #person detector
-             #epsilon = 0.001*cv2.arcLength(contours[i],True)
-             #contours[i] = cv2.approxPolyDP(contours[i],epsilon,True)
              if cv2.contourArea(cnt)>4500:
                 #draw person in blue
                 area = cv2.contourArea(cnt)
@@ -390,7 +385,7 @@ def change_detection(video_path, bg, threshold,frame,b):
                     area2 = cv2.contourArea(cnt)
                     perimeter2 = cv2.arcLength(cnt, True)
                     extent = float(area2)/rect_area
-                    print(extent)
+                    #print(extent)
                     if (extent > 0.7):
                         file.write("frame %d, detected REAL book, blob area: %d, blob perimeter: %d, blob extent: %f\r\n"% (frame_number, area2, perimeter2, extent))
                         cv2.drawContours(frame, contours, j,[0, 255, 0], -1)
