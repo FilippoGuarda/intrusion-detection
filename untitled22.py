@@ -316,7 +316,7 @@ def change_detection(video_path, bg, threshold,frame,b):
         # try with opening and closing of the binary image
         opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3)), iterations = 1)
         cv2.imshow('opening', opening)
-        dilated = cv2.dilate(opening, None, iterations=9)
+        dilated = cv2.dilate(opening, None, iterations=8)
        # dilated2 = cv2.bitwise_not(dilated)
         #clos = cv2.morphologyEx(opening, cv2.MORPH_CLOSE,  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5)), iterations = 3)
         cv2.imshow("clos", dilated)
@@ -397,7 +397,7 @@ def change_detection(video_path, bg, threshold,frame,b):
         if (cond==True and hist[255] > 1.0989*prevhist) :
             bg = selective_background_update(bg1, gray, bg, 0.2, closing3)
             print('change_updated')
-        elif (cond == True and hist[255] < 0.1*prevhist):
+        elif (cond == True and blob_count==0):
             bg = selective_background_update(bg1, gray, bg, 0.3, closing3)
             print('background update')
         elif (cond == True and (prevclos==closing).all==True):
