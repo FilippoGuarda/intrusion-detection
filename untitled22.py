@@ -207,7 +207,6 @@ def selective_background_update(bg1, frame, prev_bg, alfa,closing):
 
 def skip_background(contours, frame, final, shift1, shift2, index, thresh):
     # ignore contours that are part of the background
-
     # take two shifted contours, add them and mask using original contours to obtain internal contour
     #print(index)
     cv2.drawContours(shift1, contours, index, 255, 10, offset=(0, 0))
@@ -280,12 +279,12 @@ def change_detection(video_path, bg, threshold,frame,b):
             break
         #Convert to grayscale and blur frames
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        gray1=linear_stretching(np.copy(gray), 255,170)
+        #gray1=linear_stretching(np.copy(gray), 255,170)
         #gray2=cv2.bitwise_not(gray1.astype(np.uint8))
-        gray4 = 255-gray1.astype(np.uint8)
+        #gray4 = 255-gray1.astype(np.uint8)
         #cv2.imshow('gray4', gray4)
-        gray3 = np.copy(gray)
-        gray3[gray4<255]=np.asarray(0)
+        #gray3 = np.copy(gray)
+        #gray3[gray4<255]=np.asarray(0)
         #bg=linear_stretching(np.copy(bg), 255,170)
         #bg2=bg.astype(np.uint8)
         #bg2[gray4<255]=np.asarray(0)
@@ -376,7 +375,7 @@ def change_detection(video_path, bg, threshold,frame,b):
 
         for i, cnt in enumerate(contours):
              #person detector
-             if cv2.contourArea(cnt)>6000:
+             if cv2.contourArea(cnt)>4500:
                  #draw person in blue
                 cv2.drawContours(frame, contours,i,[255, 0, 0], -1)
 
