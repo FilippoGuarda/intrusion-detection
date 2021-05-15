@@ -248,6 +248,7 @@ count = 0
 
 
 #fgbg = cv2.createBackgroundSubtractorKNN(1,10,False)
+file = open("detected_log.txt", "w+")
 
 def auto_canny(image, sigma=0.33):
 	# compute the median of the single channel pixel intensities
@@ -263,6 +264,7 @@ def change_detection(video_path, bg, threshold,frame,b):
     # previous_frames = []
     cap = cv2.VideoCapture(video_path)
     prevhist = 0
+    frame_number = 0
     #bg_inter1=[]
     #prevhist2 = 0
     cond = False
@@ -279,19 +281,8 @@ def change_detection(video_path, bg, threshold,frame,b):
             break
         #Convert to grayscale and blur frames
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        #gray1=linear_stretching(np.copy(gray), 255,170)
-        #gray2=cv2.bitwise_not(gray1.astype(np.uint8))
-        #gray4 = 255-gray1.astype(np.uint8)
-        #cv2.imshow('gray4', gray4)
-        #gray3 = np.copy(gray)
-        #gray3[gray4<255]=np.asarray(0)
-        #bg=linear_stretching(np.copy(bg), 255,170)
-        #bg2=bg.astype(np.uint8)
-        #bg2[gray4<255]=np.asarray(0)
-        #cv2.imshow('gray34', gray3)
-        #cv2.imshow('gray2', bg.astype(np.uint8))
         cv2.imshow('bg', bg)
-        #cv2.imshow('gray23', bg2)
+  
         #Compute background suptraction
         mask = (distance(gray, bg) > 0.5)
         #m = distance(gray, bg)
@@ -375,20 +366,32 @@ def change_detection(video_path, bg, threshold,frame,b):
 
         for i, cnt in enumerate(contours):
              #person detector
+             #epsilon = 0.001*cv2.arcLength(contours[i],True)
+             #contours[i] = cv2.approxPolyDP(contours[i],epsilon,True)
              if cv2.contourArea(cnt)>4500:
-                 #draw person in blue
+                #draw person in blue
+                area = cv2.contourArea(cnt)
+                perimeter = cv2.arcLength(cnt, True)
+                file.write("frame %d, detected person, blob area: %d, blob perimeter: %d\r\n"% (frame_number, area, perimeter))
                 cv2.drawContours(frame, contours,i,[255, 0, 0], -1)
 
         for j, cnt in enumerate(contours):
             # object detector
-            if cv2.contourArea(contours[j]) < 450 or cv2.contourArea(contours[j]) > 2000:
-                continue
-            elif skip_background(contours, frame, final , shift1, shift2, j, 0.9) == True:
+            #if  cv2.contourArea(contours[j]) < 100 or cv2.contourArea(contours[j]) > 2000:
+            #    continue
+            if (450 < cv2.contourArea(contours[j]) < 1500):
+                if skip_background(contours, frame, final , shift1, shift2, j, 0.9) == True:
                 #draw false object in red
-                cv2.drawContours(frame, contours, j, [0, 0, 255], -1)
-            else :
+                    area1 = cv2.contourArea(cnt)
+                    perimeter1 = cv2.arcLength(cnt, True)
+                    file.write("frame %d, detected FALSE book, blob area: %d, blob perimeter: %d\r\n"% (frame_number, area1, perimeter1))
+                    cv2.drawContours(frame, contours, j, [0, 0, 255], -1)
+                else :
                 #draw true objects in green
-                cv2.drawContours(frame, contours, j,[0, 255, 0], -1)
+                    area2 = cv2.contourArea(cnt)
+                    perimeter2 = cv2.arcLength(cnt, True)
+                    file.write("frame %d, detected REAL book, blob area: %d, blob perimeter: %d\r\n"% (frame_number, area2, perimeter2))
+                    cv2.drawContours(frame, contours, j,[0, 255, 0], -1)
         
         cv2.imshow('contours', frame)
         time.sleep(0.02)
@@ -407,6 +410,7 @@ def change_detection(video_path, bg, threshold,frame,b):
         prevhist=hist[255]
         prevclos=closing
         cond = True
+        frame_number += 1
        # prevfr=gray3-im
         if cv2.waitKey(1) == ord('q'):
             break
