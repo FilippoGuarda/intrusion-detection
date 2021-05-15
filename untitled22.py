@@ -206,7 +206,7 @@ def selective_background_update(bg1, frame, prev_bg, alfa,closing):
     return bg1
 
 def skip_background(contours, frame, final, shift1, shift2, index, thresh):
-    # ignore contours that are part of the background
+   # ignore contours that are part of the background
     # take two shifted contours, add them and mask using original contours to obtain internal contour
     #print(index)
     cv2.drawContours(shift1, contours, index, 255, 10, offset=(0, 0))
@@ -226,8 +226,6 @@ def skip_background(contours, frame, final, shift1, shift2, index, thresh):
     #print(compare)
     if compare > thresh:
         return True
-
-
 ###Define change detection parameters
 kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
 thr = 30
@@ -379,20 +377,29 @@ def change_detection(video_path, bg, threshold,frame,b):
             # object detector
             #if  cv2.contourArea(contours[j]) < 100 or cv2.contourArea(contours[j]) > 2000:
             #    continue
-            if (450 < cv2.contourArea(contours[j]) < 1500):
+            if (450 < cv2.contourArea(contours[j]) < 1350):
                 if skip_background(contours, frame, final , shift1, shift2, j, 0.9) == True:
                 #draw false object in red
                     area1 = cv2.contourArea(cnt)
                     perimeter1 = cv2.arcLength(cnt, True)
                     file.write("frame %d, detected FALSE book, blob area: %d, blob perimeter: %d\r\n"% (frame_number, area1, perimeter1))
                     cv2.drawContours(frame, contours, j, [0, 0, 255], -1)
-                else :
-                #draw true objects in green
+                else:
+                    x,y,w,h = cv2.boundingRect(cnt)
+                    rect_area = w*h
                     area2 = cv2.contourArea(cnt)
                     perimeter2 = cv2.arcLength(cnt, True)
-                    file.write("frame %d, detected REAL book, blob area: %d, blob perimeter: %d\r\n"% (frame_number, area2, perimeter2))
-                    cv2.drawContours(frame, contours, j,[0, 255, 0], -1)
-        
+                    extent = float(area2)/rect_area
+                    print(extent)
+                    if (extent > 0.7):
+                        file.write("frame %d, detected REAL book, blob area: %d, blob perimeter: %d, blob extent: %f\r\n"% (frame_number, area2, perimeter2, extent))
+                        cv2.drawContours(frame, contours, j,[0, 255, 0], -1)
+           # else :
+           #     if cv2.contourArea(cnt)>4500:
+           #         area = cv2.contourArea(cnt)
+           #         perimeter = cv2.arcLength(cnt, True)
+           #         file.write("frame %d, detected person, blob area: %d, blob perimeter: %d\r\n"% (frame_number, area, perimeter))
+           #         cv2.drawContours(frame, contours,j,[255, 0, 0], -1)
         cv2.imshow('contours', frame)
         time.sleep(0.02)
 
