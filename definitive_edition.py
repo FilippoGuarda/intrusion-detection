@@ -3,7 +3,7 @@
 """
 Created on Sun May 16 18:26:18 2021
 
-@author: Iacopo Curti, Filippo Guarda, Bekim Radhima
+@author: Iacopo Curti , Filippo Guarda , Bekim Radhima
 """
 
 import numpy as np
@@ -46,6 +46,7 @@ interpolation = np.median  # or np.mean
 
 
 def selective_background_initialization3(bg, n, cap, count2):
+    #here we define the varibales needed
     thresh=0.085
     selective=[]
     previous_frames = []
@@ -59,27 +60,24 @@ def selective_background_initialization3(bg, n, cap, count2):
             cap.release()
             print("Released Video Resource")
             break
+        # we took into consideration only the 'even' frames in the series of 2n frames, in order to increse the robustness of the background
         if (count2 % 2 != 0): 
             if count < 2 :
                 # initialize previous frames properly
                 previous_frames.append(frame.astype(float))
             else:
                 frame = frame.astype(float)
+                #Compute the mask using three frame difference of the current and the two previous frames
                 mask = three_frame_difference(frame, previous_frames, distance, thresh)
                 mask = mask.astype(np.uint8)
-#                cv2.imshow('gf', mask.astype(np.uint8))
-                # update previous frames
+                # compute the binary morphology 
                 sopen = cv2.morphologyEx(mask, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)), iterations=1)
-#                cv2.imshow('gf2', sopen)
-#                sdilate = cv2.dilate(sopen, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=1)
                 sdilate = cv2.morphologyEx(sopen, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_RECT, (11, 11)), iterations=2)
-#                cv2.imshow('gf3', sdilate)
                 sinv = 255 - sdilate
                 sbg = np.copy(frame)
                 sbg[np.logical_not(sinv)] = np.asarray(0)
- #               cv2.imshow('gf4', sbg)
+                #append the selective background to a list
                 selective.append(sbg)
-#                previous_frames=frame
                 previous_frames.pop(0)
                 previous_frames.append(frame)
             count +=1
@@ -90,11 +88,10 @@ def selective_background_initialization3(bg, n, cap, count2):
     cap.release()
     bg_inter = np.stack(selective, axis=0)
     bg_inter = interpolation(bg_inter, axis=0)
-    plt.imshow(bg_inter.astype(np.uint8), cmap='gray', vmin=0, vmax=255)    
     cv2.destroyAllWindows()
     return bg_inter
 
-
+#this is the blind 
 def background_initialization(bg, n, cap, count):
     n=n*2
     while cap.isOpened() and count < n:
@@ -125,26 +122,20 @@ def selective_background_update(bg1, frame, prev_bg, alfa,closing):
     return bg1
 
 def skip_background(contours, frame, final, shift1, shift2, index, thresh):
-   # ignore contours that are part of the background
     # take two shifted contours, add them and mask using original contours to obtain internal contour
-    #print(index)
-    cv2.drawContours(shift1, contours, index, 255, 10, offset=(0, 0))
+    cv2.drawContours(shift1, contours, index, 255, -1, offset=(0, 0))
     shift1=cv2.erode(shift1,kernel,iterations=5)
-    #cv2.imshow('internal',shift1)
     cv2.drawContours(shift2, contours, index, 255, 10, offset=(0, 0))
-    #shift2=cv2.dilate(shift2, kernel, iterations=5)
     shift2=shift2-final
-    #shift2=cv2.erode(shift2,kernel,iterations=4)
-    #cv2.imshow('external', shift2)
     external_median =(frame[shift1 > 0])
     hist = cv2.calcHist([external_median], [0], None, [256], [0, 256])
     internal_median =(frame[shift2 > 0])
     hist1 = cv2.calcHist([internal_median], [0], None, [256], [0, 256])
-    #print('internal %d',internal_median)
     compare= cv2.compareHist(hist, hist1, cv2.HISTCMP_CORREL)
-    #print(compare)
     if compare > thresh:
         return True
+    
+
 ###Define change detection parameters
 kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
 thr = 30
@@ -206,17 +197,9 @@ def change_detection(video_path, bg, threshold,frame,b):
         im2=gray.copy()
         closing4=cv2.dilate(closing2, None, iterations=2)
         closing3=255-closing4
-        im2[np.logical_not(closing3)] = np.asarray(0)
-      
-        hist, bins = np.histogram(thresh6.flatten(), 256, [0, 256])
-        #update background when ligth changes
-       
+        im2[np.logical_not(closing3)] = np.asarray(0)      
         _, contours, hierarchy = cv2.findContours(out, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_KCOS)
         final = out
-       
-        if (hist[255] < 0.2*prevhist):
-            bg = selective_background_update(bg1, gray, bg, 0.3, closing3)
-
         shift2 = np.zeros(final.shape, np.uint8)
         shift1 = np.zeros(final.shape, np.uint8)
 
@@ -244,14 +227,15 @@ def change_detection(video_path, bg, threshold,frame,b):
                     area2 = cv2.contourArea(cnt)
                     perimeter2 = cv2.arcLength(cnt, True)
                     extent = float(area2)/rect_area
-                    #print(extent)
                     if (extent > 0.7):
                         file.write("frame %d, detected REAL book, blob area: %d, blob perimeter: %d, blob extent: %f\r\n"% (frame_number, area2, perimeter2, extent))
                         cv2.drawContours(frame, contours, j,[0, 255, 0], -1)
 
         cv2.imshow('contours', frame)
-        time.sleep(0.02)
-
+        hist, bins = np.histogram(thresh6.flatten(), 256, [0, 256])
+        if (hist[255] < 0.2*prevhist):
+            bg = selective_background_update(bg1, gray, bg, 0.3, closing3)
+        #update background when ligth changes, so if there is a change in the histogram computed starting form the morphology
         if (cond==True and hist[255] > 1.0999*prevhist) :
             bg = selective_background_update(bg1, gray, bg, 0.2, closing3)
         elif (cond == True and (closing==prevclos).all==True):
@@ -263,6 +247,7 @@ def change_detection(video_path, bg, threshold,frame,b):
         prevclos=closing
         cond = True
         frame_number += 1
+        time.sleep(0.02)
         if cv2.waitKey(1) == ord('q'):
             break
     print("Released Video Resource")
