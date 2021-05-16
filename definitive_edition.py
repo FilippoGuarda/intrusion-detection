@@ -128,19 +128,24 @@ def selective_background_update(bg1, frame, prev_bg, alfa,closing):
     return bg1
 
 def skip_background(contours, frame, final, shift1, shift2, index, thresh):
-    # take two shifted contours, add them and mask using original contours to obtain internal contour
-    cv2.drawContours(shift1, contours, index, 255, -1, offset=(0, 0))
-    shift1=cv2.erode(shift1,kernel,iterations=5)
+    # distinguish contours that are part of the background from real objects
+    # take image mask and erode to have a sharper detected object
+    cv2.drawContours(shift1, contours, index, 255, - 1, offset=(0, 0))
+    shift1 = cv2.erode(shift1, kernel, iterations=5)
+    # take the contours of the object and subtract the first mask to have the outer contours
     cv2.drawContours(shift2, contours, index, 255, 10, offset=(0, 0))
-    shift2=shift2-final
-    external_median =(frame[shift1 > 0])
+    shift2 = shift2 - final
+    # use the masks to find the pixel values at the detected contours and calculate the histograms
+    external_median = (frame[shift1 > 0])
     hist = cv2.calcHist([external_median], [0], None, [256], [0, 256])
-    internal_median =(frame[shift2 > 0])
+    internal_median = (frame[shift2 > 0])
     hist1 = cv2.calcHist([internal_median], [0], None, [256], [0, 256])
-    compare= cv2.compareHist(hist, hist1, cv2.HISTCMP_CORREL)
+    # compare the two histograms
+    compare = cv2.compareHist(hist, hist1, cv2.HISTCMP_CORREL)
+    # return the condition of false object if the two histograms are matching, thus is part of the background
     if compare > thresh:
         return True
-    
+
 
 ###Define change detection parameters
 kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
@@ -227,21 +232,19 @@ def change_detection(video_path, bg, threshold,frame,b):
         for j, cnt in enumerate(contours):
 
             if (450 < cv2.contourArea(contours[j]) < 1350):
-                if skip_background(contours, frame, final , shift1, shift2, j, 0.9) == True:
-                #draw false object in red
-                    area1 = cv2.contourArea(cnt)
-                    perimeter1 = cv2.arcLength(cnt, True)
-                    #log a ghost image detection
-                    file.write("frame %d, detected FALSE book, blob area: %d, blob perimeter: %d\r\n"% (frame_number, area1, perimeter1))
-                    cv2.drawContours(frame, contours, j, [0, 0, 255], -1)
-                else:
-                    #compute the extent parameter for the contour
-                    x,y,w,h = cv2.boundingRect(cnt)
-                    rect_area = w*h
-                    area2 = cv2.contourArea(cnt)
-                    perimeter2 = cv2.arcLength(cnt, True)
-                    extent = float(area2)/rect_area
-                    if (extent > 0.7):
+                x,y,w,h = cv2.boundingRect(cnt)
+                rect_area = w*h
+                area2 = cv2.contourArea(cnt)
+                perimeter2 = cv2.arcLength(cnt, True)
+                #compute the extent parameter for the contour
+                extent = float(area2)/rect_area
+                if (extent > 0.7):
+                    if skip_background(contours, frame, final , shift1, shift2, j, 0.9) == True:
+                        #draw false object in red
+                        #log a ghost image detection
+                        file.write("frame %d, detected FALSE book, blob area: %d, blob perimeter: %d\r\n"% (frame_number, area2, perimeter2))
+                        cv2.drawContours(frame, contours, j, [0, 0, 255], -1)
+                    else:
                         # log a real object detection
                         file.write("frame %d, detected REAL book, blob area: %d, blob perimeter: %d, blob extent: %f\r\n"% (frame_number, area2, perimeter2, extent))
                         cv2.drawContours(frame, contours, j,[0, 255, 0], -1)
