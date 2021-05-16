@@ -242,7 +242,7 @@ def change_detection(video_path, bg, threshold,frame,b):
                     if skip_background(contours, frame, final , shift1, shift2, j, 0.9) == True:
                         #draw false object in red
                         #log a ghost image detection
-                        file.write("frame %d, detected FALSE book, blob area: %d, blob perimeter: %d\r\n"% (frame_number, area2, perimeter2))
+                        file.write("frame %d, detected FALSE book, blob area: %d, blob perimeter: %d, blob extent: %f\r\n"% (frame_number, area2, perimeter2, extent))
                         cv2.drawContours(frame, contours, j, [0, 0, 255], -1)
                     else:
                         # log a real object detection
