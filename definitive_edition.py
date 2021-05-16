@@ -3,43 +3,27 @@
 """
 Created on Sun May 16 18:26:18 2021
 
-@author: sora
+@author: Iacopo Curti, Filippo Guarda, Bekim Radhima
 """
 
-"""
-Created on Sat Apr 17 14:11:41 2021
-
-@author: sora
-"""
 import numpy as np
 import cv2
 import time
 from matplotlib import pyplot as plt
 
-def L1(img1, img2):
-    diff = np.abs(img1 - img2)
-    print(len(img1.shape))
-    if img1.shape[-1] == 3 and len(img1.shape) == 3:
-        diff = np.sum(diff, axis=-1)
-    return diff
-
 
 def L2_norm(img1, img2):
+    #Computing the mean value for the distance
     mean1 = np.mean(img1)
     mean2 = np.mean(img2)
+    # each image is obtained subtracting its mean value and dividing by its standard deviation in order to normalize the two images
     newimg1 = (img1-mean1)/np.std(img1)
     newimg2 = (img2-mean2)/np.std(img2)
+    # here it is commputed the square distance of the previously computed images
     sq_dist = (newimg1 - newimg2) ** 2
     if img1.shape[-1] == 3 and len(img1.shape) == 3:
         sq_dist = np.sum(sq_dist, axis=-1)
     diff = np.sqrt(sq_dist)
-    return diff
-
-
-def Linf(F1, F2):
-    diff = np.abs(F1 - F2)
-    if F1.shape[-1] == 3 and len(F1.shape) == 3:
-        diff = np.max(diff, axis=-1)
     return diff
 
 def two_frame_difference(frame, previous_frame, distance, th):
