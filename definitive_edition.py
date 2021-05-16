@@ -155,6 +155,8 @@ count = 0
 bg = selective_background_initialization3(bg, N_frames, cap, count)
 
 #fgbg = cv2.createBackgroundSubtractorKNN(1,10,False)
+
+# create file in overwrite mode
 file = open("detected_log.txt", "w+")
 
 def change_detection(video_path, bg, threshold,frame,b):
@@ -209,6 +211,7 @@ def change_detection(video_path, bg, threshold,frame,b):
                 #draw person in blue
                 area = cv2.contourArea(cnt)
                 perimeter = cv2.arcLength(cnt, True)
+                #log a person detection
                 file.write("frame %d, detected person, blob area: %d, blob perimeter: %d\r\n"% (frame_number, area, perimeter))
                 cv2.drawContours(frame, contours,i,[255, 0, 0], -1)
 
@@ -219,6 +222,7 @@ def change_detection(video_path, bg, threshold,frame,b):
                 #draw false object in red
                     area1 = cv2.contourArea(cnt)
                     perimeter1 = cv2.arcLength(cnt, True)
+                    #log a ghost image detection
                     file.write("frame %d, detected FALSE book, blob area: %d, blob perimeter: %d\r\n"% (frame_number, area1, perimeter1))
                     cv2.drawContours(frame, contours, j, [0, 0, 255], -1)
                 else:
@@ -228,6 +232,7 @@ def change_detection(video_path, bg, threshold,frame,b):
                     perimeter2 = cv2.arcLength(cnt, True)
                     extent = float(area2)/rect_area
                     if (extent > 0.7):
+                        # log a real object detection
                         file.write("frame %d, detected REAL book, blob area: %d, blob perimeter: %d, blob extent: %f\r\n"% (frame_number, area2, perimeter2, extent))
                         cv2.drawContours(frame, contours, j,[0, 255, 0], -1)
 
@@ -256,3 +261,4 @@ def change_detection(video_path, bg, threshold,frame,b):
 
 
 change_detection('1.avi', bg, thr, frame,b)
+file.close()
